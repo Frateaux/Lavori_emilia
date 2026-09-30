@@ -5,6 +5,9 @@ const STORAGE_KEYS = {
   ANON_KEY: 'emilia_supabase_anon_key',
 };
 
+const DEFAULT_SUPABASE_URL = 'https://xtfywqmlakryfvuroxol.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_v7qW_RvIfsC3YzeD7ttEvA_STnDrbic';
+
 export function getSupabaseCredentials() {
   const envUrl = import.meta.env.VITE_SUPABASE_URL;
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -12,8 +15,8 @@ export function getSupabaseCredentials() {
   const localUrl = localStorage.getItem(STORAGE_KEYS.URL);
   const localKey = localStorage.getItem(STORAGE_KEYS.ANON_KEY);
 
-  const url = localUrl || envUrl || '';
-  const anonKey = localKey || envKey || '';
+  const url = localUrl || envUrl || DEFAULT_SUPABASE_URL;
+  const anonKey = localKey || envKey || DEFAULT_SUPABASE_ANON_KEY;
 
   return { url, anonKey, isConfigured: Boolean(url && anonKey) };
 }

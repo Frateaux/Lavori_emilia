@@ -84,7 +84,7 @@ export async function createCreation({
     try {
       const fileExt = imageFile.name.split('.').pop() || 'jpg';
       const fileName = `${id}.${fileExt}`;
-      const filePath = `creazioni/${fileName}`;
+      const filePath = fileName;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('creazioni')

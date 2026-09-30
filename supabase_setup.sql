@@ -1,6 +1,6 @@
 -- ============================================================
 -- SUPABASE SCHEMA SETUP PER IL CATALOGO DI EMILIA
--- Creato per: Beniamino Boiano (beniamino.boiano@gmail.com)
+-- Script pronto all'uso: esegui tutto il contenuto in blocco
 -- ============================================================
 
 -- 1. Tabella delle creazioni (Uncinetto e Ricamo)
@@ -19,39 +19,29 @@ CREATE TABLE IF NOT EXISTS public.creazioni (
 -- Abilita Row Level Security
 ALTER TABLE public.creazioni ENABLE ROW LEVEL SECURITY;
 
--- Chiunque può visualizzare il catalogo (lettura pubblica)
-CREATE POLICY "Creazioni visibili a tutti"
-ON public.creazioni FOR SELECT
-USING (true);
+-- Rimuovi policy precedenti se già presenti
+DROP POLICY IF EXISTS "Creazioni visibili a tutti" ON public.creazioni;
+DROP POLICY IF EXISTS "Inserimento creazioni" ON public.creazioni;
+DROP POLICY IF EXISTS "Modifica creazioni" ON public.creazioni;
+DROP POLICY IF EXISTS "Eliminazione creazioni" ON public.creazioni;
 
--- Permetti inserimento, modifica ed eliminazione
-CREATE POLICY "Inserimento creazioni"
-ON public.creazioni FOR INSERT
-WITH CHECK (true);
+-- Regole di accesso per la tabella
+CREATE POLICY "Creazioni visibili a tutti" ON public.creazioni FOR SELECT USING (true);
+CREATE POLICY "Inserimento creazioni" ON public.creazioni FOR INSERT WITH CHECK (true);
+CREATE POLICY "Modifica creazioni" ON public.creazioni FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Eliminazione creazioni" ON public.creazioni FOR DELETE USING (true);
 
-CREATE POLICY "Modifica creazioni"
-ON public.creazioni FOR UPDATE
-USING (true);
-
-CREATE POLICY "Eliminazione creazioni"
-ON public.creazioni FOR DELETE
-USING (true);
-
--- 2. Creazione del Bucket Storage per le immagini (se non già creato da UI)
+-- 2. Bucket Storage per le immagini
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('creazioni', 'creazioni', true)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Policy di lettura pubblica per le foto nello storage
-CREATE POLICY "Foto visibili a tutti"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'creazioni');
+-- Rimuovi policy storage precedenti se già presenti
+DROP POLICY IF EXISTS "Foto visibili a tutti" ON storage.objects;
+DROP POLICY IF EXISTS "Upload foto creazioni" ON storage.objects;
+DROP POLICY IF EXISTS "Eliminazione foto creazioni" ON storage.objects;
 
--- Policy di upload foto
-CREATE POLICY "Upload foto creazioni"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'creazioni');
-
-CREATE POLICY "Eliminazione foto creazioni"
-ON storage.objects FOR DELETE
-USING (bucket_id = 'creazioni');
+-- Regole di accesso per le foto nello storage
+CREATE POLICY "Foto visibili a tutti" ON storage.objects FOR SELECT USING (bucket_id = 'creazioni');
+CREATE POLICY "Upload foto creazioni" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'creazioni');
+CREATE POLICY "Eliminazione foto creazioni" ON storage.objects FOR DELETE USING (bucket_id = 'creazioni');
