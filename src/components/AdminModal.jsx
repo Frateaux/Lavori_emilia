@@ -16,6 +16,8 @@ import {
   KeyRound,
   ExternalLink,
   Star,
+  Pencil,
+  ArrowLeft,
 } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import {
@@ -31,6 +33,7 @@ export default function AdminModal({
   onAddCreation,
   onDeleteCreation,
   onToggleFeatured,
+  onUpdateCreation,
   onResetDemo,
 }) {
   // Autenticazione con PIN
@@ -71,18 +74,60 @@ export default function AdminModal({
   const [cloudTesting, setCloudTesting] = useState(false);
   const [cloudStatus, setCloudStatus] = useState(null);
 
+  // Stato Modifica Lavoro Esistente
+  const [editingItem, setEditingItem] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    category: 'Uncinetto',
+    description: '',
+    materials: '',
+    dimensions: '',
+    featured: false,
+  });
+
+  const startEditing = (item) => {
+    setEditingItem(item);
+    setEditFormData({
+      title: item.title || '',
+      category: item.category || 'Uncinetto',
+      description: item.description || '',
+      materials: item.materials || '',
+      dimensions: item.dimensions || '',
+      featured: Boolean(item.featured),
+    });
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editFormData.title.trim()) {
+      alert('Inserisci un titolo per la creazione.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onUpdateCreation(editingItem.id, editFormData);
+      setFeedbackMsg('Creazione modificata con successo!');
+      setTimeout(() => setFeedbackMsg(''), 4000);
+      setEditingItem(null);
+    } catch (err) {
+      console.error(err);
+      alert('Errore durante la modifica.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   // Gestione Login PIN
   const handlePinSubmit = (e) => {
     e.preventDefault();
-    // Default PIN: 1234
     if (pinInput.trim() === '1234') {
       setIsAuthenticated(true);
       localStorage.setItem('emilia_admin_auth', 'true');
       setPinError('');
     } else {
-      setPinError('PIN non corretto. Riprova (il PIN di default è 1234)');
+      setPinError('PIN non corretto. Riprova');
     }
   };
 
@@ -242,7 +287,7 @@ export default function AdminModal({
                   <input
                     type="password"
                     maxLength={8}
-                    placeholder="Codice PIN (default: 1234)"
+                    placeholder="Codice PIN"
                     value={pinInput}
                     onChange={(e) => setPinInput(e.target.value)}
                     className="w-full text-center text-xl tracking-widest px-4 py-3 bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-800 font-mono text-stone-800"
@@ -262,10 +307,6 @@ export default function AdminModal({
                   Accedi allo Spazio Emilia
                 </button>
               </form>
-
-              <p className="text-[11px] text-stone-400">
-                Suggerimento per test: il codice predefinito è <strong>1234</strong>
-              </p>
             </div>
           ) : (
             /* Pannello Autenticato */
@@ -533,92 +574,269 @@ export default function AdminModal({
 
               {/* TAB 2: GESTIONE LAVORI ESISTENTI */}
               {activeTab === 'gestione' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-stone-500">
-                      Tutti i lavori attualmente visibili nel catalogo ({creations.length}):
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm('Vuoi ripristinare le creazioni d\'esempio iniziali?')) {
-                          onResetDemo();
-                          setFeedbackMsg('Catalogo ripristinato ai dati iniziali.');
-                        }
-                      }}
-                      className="text-xs text-stone-500 hover:text-stone-800 underline cursor-pointer"
-                    >
-                      Ripristina esempi iniziali
-                    </button>
-                  </div>
+                editingItem ? (
+                  /* Vista Modifica Creazione */
+                  <div className="space-y-5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingItem(null)}
+                          className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer text-stone-600"
+                          title="Torna alla lista"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <h3 className="font-serif text-lg font-bold text-stone-900">
+                          Modifica Creazione
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem(null)}
+                        className="text-xs text-stone-500 hover:text-stone-800 underline cursor-pointer"
+                      >
+                        Annulla
+                      </button>
+                    </div>
 
-                  <div className="divide-y divide-stone-100 max-h-[50vh] overflow-y-auto">
-                    {creations.map((item) => (
-                      <div key={item.id} className="py-3 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={item.imageUrl}
-                            alt={item.title}
-                            className="w-14 h-14 object-cover rounded-xl border border-stone-200"
-                          />
-                          <div>
-                            <h4 className="text-xs sm:text-sm font-semibold text-stone-900 line-clamp-1">
-                              {item.title}
-                            </h4>
-                            <span
-                              className={`inline-block text-[10px] font-semibold px-2 py-0.2 rounded-full mt-1 ${
-                                item.category === 'Uncinetto'
-                                  ? 'bg-amber-100 text-amber-900'
-                                  : 'bg-rose-100 text-rose-900'
-                              }`}
-                            >
-                              {item.category}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => onToggleFeatured && onToggleFeatured(item.id)}
-                            className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
-                              item.featured
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
-                                : 'bg-stone-100 text-stone-500 hover:text-amber-700 hover:bg-amber-50'
-                            }`}
-                            title={
-                              item.featured
-                                ? 'In copertina in alto (Tocca per togliere)'
-                                : 'Metti come copertina in alto'
-                            }
-                          >
-                            <Star
-                              className={`w-3.5 h-3.5 ${
-                                item.featured ? 'fill-amber-500 text-amber-600' : 'text-stone-400'
-                              }`}
-                            />
-                            <span className="hidden sm:inline text-[11px]">
-                              {item.featured ? 'In Copertina' : 'Metti in Copertina'}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Eliminare definitivamente "${item.title}"?`)) {
-                                onDeleteCreation(item.id);
-                              }
-                            }}
-                            className="p-2 text-stone-400 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Elimina lavoro"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                    <form onSubmit={handleSaveEdit} className="space-y-4">
+                      {/* Anteprima foto attuale */}
+                      <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl border border-stone-200">
+                        <img
+                          src={editingItem.imageUrl}
+                          alt={editingItem.title}
+                          className="w-16 h-16 object-cover rounded-xl border border-stone-200 shrink-0"
+                        />
+                        <div className="text-xs text-stone-600">
+                          <p className="font-semibold text-stone-800">Foto Attuale Mantenuta</p>
+                          <p className="text-[11px] text-stone-500">
+                            Stai modificando il titolo, la descrizione e i dettagli senza dover ricaricare la foto.
+                          </p>
                         </div>
                       </div>
-                    ))}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
+                            Titolo Creazione *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={editFormData.title}
+                            onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                            className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-800 text-stone-800"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
+                            Categoria *
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditFormData({ ...editFormData, category: 'Uncinetto' })}
+                              className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
+                                editFormData.category === 'Uncinetto'
+                                  ? 'bg-amber-900 text-white border-amber-900 shadow-xs'
+                                  : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                              }`}
+                            >
+                              🧶 Uncinetto
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditFormData({ ...editFormData, category: 'Ricamo' })}
+                              className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
+                                editFormData.category === 'Ricamo'
+                                  ? 'bg-rose-900 text-white border-rose-900 shadow-xs'
+                                  : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                              }`}
+                            >
+                              🪡 Ricamo
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
+                          Descrizione / Note Artigianali
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={editFormData.description}
+                          onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                          className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-800 text-stone-800 resize-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
+                            Filati & Materiali (opzionale)
+                          </label>
+                          <input
+                            type="text"
+                            value={editFormData.materials}
+                            onChange={(e) => setEditFormData({ ...editFormData, materials: e.target.value })}
+                            className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-800 text-stone-800"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
+                            Dimensioni (opzionale)
+                          </label>
+                          <input
+                            type="text"
+                            value={editFormData.dimensions}
+                            onChange={(e) => setEditFormData({ ...editFormData, dimensions: e.target.value })}
+                            className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-800 text-stone-800"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="editFeaturedCheck"
+                          checked={editFormData.featured}
+                          onChange={(e) => setEditFormData({ ...editFormData, featured: e.target.checked })}
+                          className="w-4 h-4 text-rose-800 rounded border-stone-300 focus:ring-rose-800"
+                        />
+                        <label htmlFor="editFeaturedCheck" className="text-xs text-stone-700 font-medium cursor-pointer">
+                          Metti in evidenza questo lavoro come pezzo speciale in copertina
+                        </label>
+                      </div>
+
+                      <div className="pt-2 flex gap-3">
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="flex-1 py-3 px-5 bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isSubmitting ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4 text-emerald-400" />
+                          )}
+                          <span>Salva Modifiche</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEditingItem(null)}
+                          className="py-3 px-5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer"
+                        >
+                          Annulla
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                </div>
+                ) : (
+                  /* Lista Creazioni Esistenti con Tasto Modifica */
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-stone-500">
+                        Tutti i lavori attualmente visibili nel catalogo ({creations.length}):
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm('Vuoi ripristinare le creazioni d\'esempio iniziali?')) {
+                            onResetDemo();
+                            setFeedbackMsg('Catalogo ripristinato ai dati iniziali.');
+                          }
+                        }}
+                        className="text-xs text-stone-500 hover:text-stone-800 underline cursor-pointer"
+                      >
+                        Ripristina esempi iniziali
+                      </button>
+                    </div>
+
+                    <div className="divide-y divide-stone-100 max-h-[50vh] overflow-y-auto">
+                      {creations.map((item) => (
+                        <div key={item.id} className="py-3 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={item.imageUrl}
+                              alt={item.title}
+                              className="w-14 h-14 object-cover rounded-xl border border-stone-200 shrink-0"
+                            />
+                            <div>
+                              <h4 className="text-xs sm:text-sm font-semibold text-stone-900 line-clamp-1">
+                                {item.title}
+                              </h4>
+                              <span
+                                className={`inline-block text-[10px] font-semibold px-2 py-0.2 rounded-full mt-1 ${
+                                  item.category === 'Uncinetto'
+                                    ? 'bg-amber-100 text-amber-900'
+                                    : 'bg-rose-100 text-rose-900'
+                                }`}
+                              >
+                                {item.category}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* Tasto Modifica Didascalia / Dettagli */}
+                            <button
+                              type="button"
+                              onClick={() => startEditing(item)}
+                              className="p-2 text-stone-600 hover:text-rose-900 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
+                              title="Modifica didascalia, descrizione e dettagli"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
+                            {/* Tasto In Copertina */}
+                            <button
+                              type="button"
+                              onClick={() => onToggleFeatured && onToggleFeatured(item.id)}
+                              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
+                                item.featured
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
+                                  : 'bg-stone-100 text-stone-500 hover:text-amber-700 hover:bg-amber-50'
+                              }`}
+                              title={
+                                item.featured
+                                  ? 'In copertina in alto (Tocca per togliere)'
+                                  : 'Metti come copertina in alto'
+                              }
+                            >
+                              <Star
+                                className={`w-3.5 h-3.5 ${
+                                  item.featured ? 'fill-amber-500 text-amber-600' : 'text-stone-400'
+                                }`}
+                              />
+                              <span className="hidden sm:inline text-[11px]">
+                                {item.featured ? 'In Copertina' : 'Metti in Copertina'}
+                              </span>
+                            </button>
+
+                            {/* Tasto Elimina */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Eliminare definitivamente "${item.title}"?`)) {
+                                  onDeleteCreation(item.id);
+                                }
+                              }}
+                              className="p-2 text-stone-400 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Elimina lavoro"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
               )}
 
               {/* TAB 3: CLOUD CONFIG (Supabase) */}

@@ -12,8 +12,8 @@ export default function StorySection() {
             <div className="relative mx-auto max-w-md">
               <div className="rounded-3xl overflow-hidden shadow-xl border-4 border-white aspect-4/5">
                 <img
-                  src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1000&auto=format&fit=crop"
-                  alt="Mani al lavoro con ago e filati artigianali"
+                  src="https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=1200&auto=format&fit=crop"
+                  alt="Ricamo artigianale a punto pieno su puro lino naturale"
                   className="w-full h-full object-cover"
                 />
               </div>

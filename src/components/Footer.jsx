@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, Code, Sparkles, MessageCircle } from 'lucide-react';
+import { Mail, Phone, Code, MessageCircle } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();

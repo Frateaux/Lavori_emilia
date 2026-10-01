@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Lock, Menu, X, Phone, Heart } from 'lucide-react';
+import { Sparkles, Lock, Menu, X, Heart } from 'lucide-react';
 
 export default function Navbar({ onOpenAdmin }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -35,16 +35,16 @@ export default function Navbar({ onOpenAdmin }) {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-stone-600">
             <button
-              onClick={() => scrollTo('catalogo')}
-              className="hover:text-rose-800 transition-colors py-1 cursor-pointer"
-            >
-              Catalogo Lavori
-            </button>
-            <button
               onClick={() => scrollTo('storia')}
               className="hover:text-rose-800 transition-colors py-1 cursor-pointer"
             >
               La Mia Storia
+            </button>
+            <button
+              onClick={() => scrollTo('catalogo')}
+              className="hover:text-rose-800 transition-colors py-1 cursor-pointer"
+            >
+              Catalogo Lavori
             </button>
             <button
               onClick={() => scrollTo('contatti')}
@@ -98,16 +98,16 @@ export default function Navbar({ onOpenAdmin }) {
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-stone-200 bg-[#FAF8F5] px-4 pt-2 pb-6 space-y-3 animate-in fade-in slide-in-from-top-4 duration-200">
           <button
-            onClick={() => scrollTo('catalogo')}
-            className="block w-full text-left py-2.5 px-3 rounded-lg text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
-          >
-            Catalogo Lavori
-          </button>
-          <button
             onClick={() => scrollTo('storia')}
             className="block w-full text-left py-2.5 px-3 rounded-lg text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
           >
             La Mia Storia
+          </button>
+          <button
+            onClick={() => scrollTo('catalogo')}
+            className="block w-full text-left py-2.5 px-3 rounded-lg text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
+          >
+            Catalogo Lavori
           </button>
           <button
             onClick={() => scrollTo('contatti')}

@@ -10,14 +10,15 @@ import AdminModal from './components/AdminModal';
 import {
   fetchCreations,
   createCreation,
+  updateCreation,
   deleteCreation,
   toggleFeaturedCreation,
   resetToInitial,
 } from './services/itemsService';
+import { initialCreations } from './data/initialCreations';
 
 export default function App() {
-  const [creations, setCreations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [creations, setCreations] = useState(initialCreations);
   const [selectedItem, setSelectedItem] = useState(null);
   const [inquiryItem, setInquiryItem] = useState(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -26,13 +27,12 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        setLoading(true);
         const res = await fetchCreations();
-        setCreations(res.items || []);
+        if (res.items && res.items.length > 0) {
+          setCreations(res.items);
+        }
       } catch (err) {
         console.error('Errore nel caricamento dei dati:', err);
-      } finally {
-        setLoading(false);
       }
     }
     loadData();
@@ -51,6 +51,17 @@ export default function App() {
   const handleDeleteCreation = async (id) => {
     await deleteCreation(id);
     setCreations((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Gestione modifica creazione esistente
+  const handleUpdateCreation = async (id, updatedFields) => {
+    const res = await updateCreation(id, updatedFields);
+    if (res.success && res.item) {
+      setCreations((prev) =>
+        prev.map((item) => (item.id === id ? res.item : item))
+      );
+    }
+    return res;
   };
 
   // Ripristino dati d'esempio
@@ -119,7 +130,7 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1">
         
-        {/* Hero Section (Mostra dinamicamente l'ultima foto messa in evidenza) */}
+        {/* 1. Hero Section (Mostra dinamicamente l'ultima foto messa in evidenza) */}
         <Hero
           featuredItem={latestFeatured}
           secondaryItem={secondaryFeatured}
@@ -134,7 +145,10 @@ export default function App() {
           }}
         />
 
-        {/* Catalog & Gallery Section */}
+        {/* 2. Story & Biography Section (All'inizio: introduce Emilia e la sua passione) */}
+        <StorySection />
+
+        {/* 3. Catalog & Gallery Section (Il portfolio delle opere) */}
         <Gallery
           creations={creations}
           onSelectItem={(item) => setSelectedItem(item)}
@@ -142,10 +156,7 @@ export default function App() {
           onOpenAdmin={() => setIsAdminOpen(true)}
         />
 
-        {/* Story & Biography Section */}
-        <StorySection />
-
-        {/* Contact Section for Emilia */}
+        {/* 4. Contact Section for Emilia */}
         <ContactSection selectedInquiryItem={inquiryItem} />
 
       </main>
@@ -153,14 +164,14 @@ export default function App() {
       {/* Prominent Footer with Developer Credits (Beniamino Boiano) */}
       <Footer />
 
-      {/* Modal Dettagli Lavoro (Lightbox) */}
+      {/* Modal Dettagli Lavoro (Lightbox con Ultra-Zoom Trame) */}
       <ItemModal
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
         onInquire={(item, channel) => handleInquire(item, channel)}
       />
 
-      {/* Modal Amministrazione Spazio Emilia (Upload Fotocamera / File) */}
+      {/* Modal Amministrazione Spazio Emilia (Upload Fotocamera / Modifica Didascalie) */}
       <AdminModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
@@ -168,6 +179,7 @@ export default function App() {
         onAddCreation={handleAddCreation}
         onDeleteCreation={handleDeleteCreation}
         onToggleFeatured={handleToggleFeatured}
+        onUpdateCreation={handleUpdateCreation}
         onResetDemo={handleResetDemo}
       />
 

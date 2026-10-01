@@ -164,6 +164,49 @@ export async function deleteCreation(id) {
 }
 
 /**
+ * Modifica i dati di una creazione esistente (titolo, categoria, descrizione, materiali, misure)
+ */
+export async function updateCreation(id, updatedFields) {
+  const current = getLocalItems();
+  let updatedItem = null;
+  const updated = current.map((item) => {
+    if (item.id === id) {
+      updatedItem = { ...item, ...updatedFields };
+      return updatedItem;
+    }
+    return item;
+  });
+  saveLocalItems(updated);
+
+  const supabase = getSupabaseClient();
+  if (supabase && updatedItem) {
+    try {
+      const { data, error } = await supabase
+        .from('creazioni')
+        .update({
+          title: updatedItem.title,
+          category: updatedItem.category,
+          description: updatedItem.description,
+          materials: updatedItem.materials,
+          dimensions: updatedItem.dimensions,
+          featured: updatedItem.featured,
+          ...(updatedFields.imageUrl ? { imageUrl: updatedItem.imageUrl } : {}),
+        })
+        .eq('id', id)
+        .select();
+
+      if (!error && data && data.length > 0) {
+        return { success: true, item: data[0] };
+      }
+    } catch (e) {
+      console.warn('Errore aggiornamento Supabase:', e);
+    }
+  }
+
+  return { success: true, item: updatedItem };
+}
+
+/**
  * Alterna lo stato "In evidenza" (Vetrina / Copertina) di una creazione
  */
 export async function toggleFeaturedCreation(id) {
