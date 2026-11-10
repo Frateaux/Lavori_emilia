@@ -18,6 +18,7 @@ import {
   Star,
   Pencil,
   ArrowLeft,
+  Images,
 } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import {
@@ -25,6 +26,11 @@ import {
   saveSupabaseCredentials,
   testSupabaseConnection,
 } from '../services/supabaseClient';
+import {
+  getItemImages,
+  getItemMainImage,
+  encodeItemImages,
+} from '../utils/imageGalleryHelper';
 
 export default function AdminModal({
   isOpen,
@@ -56,9 +62,8 @@ export default function AdminModal({
     featured: false,
   });
 
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [imageStats, setImageStats] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -66,6 +71,8 @@ export default function AdminModal({
   // Input file nascosti per Fotocamera e Galleria
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const editAddPhotoInputRef = useRef(null);
+  const editCameraInputRef = useRef(null);
 
   // Cloud Config state
   const creds = getSupabaseCredentials();
@@ -84,6 +91,7 @@ export default function AdminModal({
     dimensions: '',
     featured: false,
   });
+  const [editPhotos, setEditPhotos] = useState([]); // Elenco foto attuali del lavoro in modifica
 
   const startEditing = (item) => {
     setEditingItem(item);
@@ -95,6 +103,7 @@ export default function AdminModal({
       dimensions: item.dimensions || '',
       featured: Boolean(item.featured),
     });
+    setEditPhotos(getItemImages(item));
   };
 
   const handleSaveEdit = async (e) => {
@@ -105,7 +114,11 @@ export default function AdminModal({
     }
     setIsSubmitting(true);
     try {
-      await onUpdateCreation(editingItem.id, editFormData);
+      const updatedFields = {
+        ...editFormData,
+        imageUrl: encodeItemImages(editPhotos),
+      };
+      await onUpdateCreation(editingItem.id, updatedFields);
       setFeedbackMsg('Creazione modificata con successo!');
       setTimeout(() => setFeedbackMsg(''), 4000);
       setEditingItem(null);
@@ -137,38 +150,81 @@ export default function AdminModal({
     setPinInput('');
   };
 
-  // Elaborazione immagine da file o fotocamera
-  const handleImageSelected = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Elaborazione immagini da file o fotocamera (supporta selezioni multiple e aggiunte progressive)
+  const handleImagesSelected = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     try {
       setIsProcessingImage(true);
-      setFeedbackMsg('Ottimizzazione immagine in corso...');
+      setFeedbackMsg(`Ottimizzazione di ${files.length} foto in corso...`);
       
-      const compressed = await compressImage(file);
-      setSelectedFile(compressed.file);
-      setImagePreview(compressed.dataUrl);
-      setImageStats({
-        orig: compressed.originalSizeKb,
-        comp: compressed.compressedSizeKb,
-        dimensions: `${compressed.width}x${compressed.height}px`,
-      });
+      const newFiles = [];
+      const newPreviews = [];
+
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        newFiles.push(compressed.file);
+        newPreviews.push(compressed.dataUrl);
+      }
+
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
+      setImagePreviews((prev) => [...prev, ...newPreviews]);
       setFeedbackMsg('');
     } catch (err) {
       console.error(err);
-      alert('Errore durante l\'elaborazione della foto. Riprova.');
+      alert('Errore durante l\'elaborazione delle foto. Riprova.');
     } finally {
       setIsProcessingImage(false);
+      e.target.value = ''; // Reset input per permettere ri-selezione
     }
   };
 
-  // Invio nuovo lavoro
+  // Aggiunta foto in modalità modifica lavoro esistente
+  const handleAddPhotosToEditing = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      setIsProcessingImage(true);
+      setFeedbackMsg(`Compressione di ${files.length} foto aggiuntiva/e...`);
+      const newUrls = [];
+      for (const f of files) {
+        const compressed = await compressImage(f);
+        newUrls.push(compressed.dataUrl);
+      }
+      setEditPhotos((prev) => [...prev, ...newUrls]);
+      setFeedbackMsg('');
+    } catch (err) {
+      console.error(err);
+      alert('Errore elaborazione foto aggiuntiva.');
+    } finally {
+      setIsProcessingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // Rimuovi una singola foto dalla lista di un nuovo lavoro
+  const handleRemoveNewPhoto = (index) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Rimuovi una foto dalla lista di un lavoro in modifica
+  const handleRemoveEditPhoto = (index) => {
+    if (editPhotos.length <= 1) {
+      alert('Un lavoro deve avere almeno una foto.');
+      return;
+    }
+    setEditPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Invio nuovo lavoro con supporto multi-foto
   const handleSubmitNewCreation = async (e) => {
     e.preventDefault();
 
-    if (!imagePreview) {
-      alert('Per favore seleziona o scatta una foto del lavoro prima di pubblicare.');
+    if (imagePreviews.length === 0) {
+      alert('Per favore seleziona o scatta almeno una foto del lavoro prima di pubblicare.');
       return;
     }
 
@@ -181,8 +237,10 @@ export default function AdminModal({
     try {
       await onAddCreation({
         ...formData,
-        imageFile: selectedFile,
-        imageDataUrl: imagePreview,
+        imageFiles: selectedFiles,
+        imageDataUrls: imagePreviews,
+        imageFile: selectedFiles[0],
+        imageDataUrl: imagePreviews[0],
       });
 
       // Reset form
@@ -194,10 +252,9 @@ export default function AdminModal({
         dimensions: '',
         featured: false,
       });
-      setSelectedFile(null);
-      setImagePreview(null);
-      setImageStats(null);
-      setFeedbackMsg('Creazione aggiunta con successo al catalogo!');
+      setSelectedFiles([]);
+      setImagePreviews([]);
+      setFeedbackMsg('Creazione aggiunta con successo al catalogo con tutte le sue foto!');
       setTimeout(() => setFeedbackMsg(''), 4000);
       setActiveTab('gestione');
     } catch (err) {
@@ -398,50 +455,71 @@ export default function AdminModal({
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      onChange={handleImageSelected}
+                      onChange={handleImagesSelected}
                       className="hidden"
                     />
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
-                      onChange={handleImageSelected}
+                      multiple
+                      onChange={handleImagesSelected}
                       className="hidden"
                     />
 
                     {/* Image Preview & Stats */}
                     {isProcessingImage && (
                       <div className="p-4 bg-stone-100 rounded-2xl text-center text-xs text-stone-600 animate-pulse">
-                        Elaborazione e ottimizzazione foto in corso...
+                        Elaborazione e compressione foto in corso...
                       </div>
                     )}
 
-                    {imagePreview && !isProcessingImage && (
-                      <div className="relative rounded-2xl overflow-hidden border border-stone-200 bg-stone-50 p-2 flex flex-col sm:flex-row items-center gap-4">
-                        <img
-                          src={imagePreview}
-                          alt="Anteprima"
-                          className="w-32 h-32 object-cover rounded-xl border border-stone-200"
-                        />
-                        <div className="space-y-1 text-xs text-stone-600">
-                          <p className="font-semibold text-stone-900 text-sm">
-                            Foto pronta per la pubblicazione
-                          </p>
-                          {imageStats && (
-                            <p className="text-[11px] text-stone-500">
-                              Dimensione: {imageStats.dimensions} • Ottimizzata: {imageStats.comp} KB (da {imageStats.orig} KB)
-                            </p>
-                          )}
+                    {imagePreviews.length > 0 && !isProcessingImage && (
+                      <div className="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                            <Images className="w-4 h-4 text-rose-800" />
+                            <span>{imagePreviews.length} foto pronte per questo lavoro</span>
+                          </span>
+                          <span className="text-[11px] text-stone-500">
+                            La prima foto sarà la copertina principale
+                          </span>
+                        </div>
+
+                        {/* Striscia miniature con tasto elimina su ciascuna */}
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                          {imagePreviews.map((previewUrl, idx) => (
+                            <div
+                              key={idx}
+                              className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 group bg-stone-200"
+                            >
+                              <img
+                                src={previewUrl}
+                                alt={`Foto ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <span className="absolute top-1 left-1 bg-stone-900/80 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-md">
+                                {idx === 0 ? 'Copertina' : `#${idx + 1}`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveNewPhoto(idx)}
+                                className="absolute top-1 right-1 p-1 bg-rose-900/80 hover:bg-rose-900 text-white rounded-md transition-colors cursor-pointer shadow-xs"
+                                title="Rimuovi questa foto"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
                           <button
                             type="button"
-                            onClick={() => {
-                              setImagePreview(null);
-                              setSelectedFile(null);
-                              setImageStats(null);
-                            }}
-                            className="text-xs text-rose-700 hover:text-rose-900 underline pt-1 cursor-pointer"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-xs text-rose-900 hover:text-stone-950 font-semibold underline cursor-pointer"
                           >
-                            Rimuovi o cambia foto
+                            + Aggiungi un'altra foto (particolare, retro, ecc.)
                           </button>
                         </div>
                       </div>
@@ -601,18 +679,84 @@ export default function AdminModal({
                     </div>
 
                     <form onSubmit={handleSaveEdit} className="space-y-4">
-                      {/* Anteprima foto attuale */}
-                      <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl border border-stone-200">
-                        <img
-                          src={editingItem.imageUrl}
-                          alt={editingItem.title}
-                          className="w-16 h-16 object-cover rounded-xl border border-stone-200 shrink-0"
-                        />
-                        <div className="text-xs text-stone-600">
-                          <p className="font-semibold text-stone-800">Foto Attuale Mantenuta</p>
-                          <p className="text-[11px] text-stone-500">
-                            Stai modificando il titolo, la descrizione e i dettagli senza dover ricaricare la foto.
-                          </p>
+                      {/* Gestione Foto del Lavoro in Modifica */}
+                      <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-stone-800 flex items-center gap-1.5">
+                            <Images className="w-4 h-4 text-rose-800" />
+                            <span>Foto del Lavoro ({editPhotos.length})</span>
+                          </span>
+                          <span className="text-[11px] text-stone-500">
+                            Puoi aggiungere altre viste o eliminare foto
+                          </span>
+                        </div>
+
+                        {/* Striscia miniature attuali */}
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                          {editPhotos.map((photoUrl, pIdx) => (
+                            <div
+                              key={pIdx}
+                              className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 bg-stone-200 group"
+                            >
+                              <img
+                                src={photoUrl}
+                                alt={`Foto ${pIdx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <span className="absolute top-1 left-1 bg-stone-900/80 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-md">
+                                {pIdx === 0 ? 'Copertina' : `#${pIdx + 1}`}
+                              </span>
+                              {editPhotos.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveEditPhoto(pIdx)}
+                                  className="absolute top-1 right-1 p-1 bg-rose-900/80 hover:bg-rose-900 text-white rounded-md transition-colors cursor-pointer shadow-xs"
+                                  title="Rimuovi questa foto"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pulsanti per aggiungere foto (fotocamera o file) */}
+                        <div className="flex items-center gap-3 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => editAddPhotoInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-900 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>+ Aggiungi da Galleria</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => editCameraInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-800 bg-white border border-stone-300 hover:bg-stone-100 rounded-xl transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>Scatta Foto</span>
+                          </button>
+
+                          {/* Hidden inputs per edit mode */}
+                          <input
+                            ref={editAddPhotoInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleAddPhotosToEditing}
+                            className="hidden"
+                          />
+                          <input
+                            ref={editCameraInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleAddPhotosToEditing}
+                            className="hidden"
+                          />
                         </div>
                       </div>
 
@@ -762,7 +906,7 @@ export default function AdminModal({
                         <div key={item.id} className="py-3 flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3">
                             <img
-                              src={item.imageUrl}
+                              src={getItemMainImage(item)}
                               alt={item.title}
                               className="w-14 h-14 object-cover rounded-xl border border-stone-200 shrink-0"
                             />
@@ -770,15 +914,22 @@ export default function AdminModal({
                               <h4 className="text-xs sm:text-sm font-semibold text-stone-900 line-clamp-1">
                                 {item.title}
                               </h4>
-                              <span
-                                className={`inline-block text-[10px] font-semibold px-2 py-0.2 rounded-full mt-1 ${
-                                  item.category === 'Uncinetto'
-                                    ? 'bg-amber-100 text-amber-900'
-                                    : 'bg-rose-100 text-rose-900'
-                                }`}
-                              >
-                                {item.category}
-                              </span>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span
+                                  className={`inline-block text-[10px] font-semibold px-2 py-0.2 rounded-full ${
+                                    item.category === 'Uncinetto'
+                                      ? 'bg-amber-100 text-amber-900'
+                                      : 'bg-rose-100 text-rose-900'
+                                  }`}
+                                >
+                                  {item.category}
+                                </span>
+                                {getItemImages(item).length > 1 && (
+                                  <span className="text-[10px] text-stone-500 font-medium">
+                                    • {getItemImages(item).length} foto
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 

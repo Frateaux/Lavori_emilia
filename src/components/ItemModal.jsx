@@ -12,14 +12,18 @@ import {
   RotateCcw,
   Compass,
   Move,
+  ChevronLeft,
+  ChevronRight,
+  Images,
 } from 'lucide-react';
+import { getItemImages } from '../utils/imageGalleryHelper';
 
 export default function ItemModal({ item, onClose, onInquire }) {
   const [isZoomedFull, setIsZoomedFull] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(2); // Ingrandimento (da 1x a 4x)
+  const [zoomLevel, setZoomLevel] = useState(2); // Ingrandimento (da 1x a 4.5x)
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 
   // Coordinate normalizzate del centro della visuale [0, 1]
-  // 0.5 = centro perfetto dell'immagine
   const [position, setPosition] = useState({ u: 0.5, v: 0.5 });
   const [isDragging, setIsDragging] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -29,6 +33,10 @@ export default function ItemModal({ item, onClose, onInquire }) {
   const dragStartRef = useRef({ x: 0, y: 0, u: 0.5, v: 0.5 });
   const isMinimapDraggingRef = useRef(false);
 
+  // Lista di tutte le foto associate al lavoro (generale, retro, particolari...)
+  const photoList = getItemImages(item);
+  const currentPhotoUrl = photoList[selectedPhotoIndex] || item?.imageUrl || '';
+
   // Limiti e clamp
   const clamp = (val, min = 0, max = 1) => Math.min(Math.max(val, min), max);
 
@@ -37,9 +45,10 @@ export default function ItemModal({ item, onClose, onInquire }) {
     setIsZoomedFull(false);
     setZoomLevel(2);
     setPosition({ u: 0.5, v: 0.5 });
+    setSelectedPhotoIndex(0);
   }, [item]);
 
-  // Gestione tastiera
+  // Gestione tastiera (Escape per chiudere, Frecce per muoversi o cambiare foto)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -51,7 +60,17 @@ export default function ItemModal({ item, onClose, onInquire }) {
           onClose();
         }
       }
-      // Frecce direzionali per spostarsi
+
+      // Frecce per scorrere tra foto se non ingrandito
+      if (!isZoomedFull && photoList.length > 1) {
+        if (e.key === 'ArrowRight') {
+          setSelectedPhotoIndex((prev) => (prev + 1) % photoList.length);
+        } else if (e.key === 'ArrowLeft') {
+          setSelectedPhotoIndex((prev) => (prev - 1 + photoList.length) % photoList.length);
+        }
+      }
+
+      // Frecce direzionali per spostarsi quando in Ultra-Zoom
       if (isZoomedFull) {
         const step = 0.05;
         if (e.key === 'ArrowRight') {
@@ -67,7 +86,7 @@ export default function ItemModal({ item, onClose, onInquire }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isZoomedFull, onClose]);
+  }, [isZoomedFull, onClose, photoList.length]);
 
   if (!item) return null;
 
@@ -156,7 +175,7 @@ export default function ItemModal({ item, onClose, onInquire }) {
         >
           {/* Top Bar Zoom Controls */}
           <div
-            className="flex items-center justify-between text-white z-20 bg-stone-900/90 backdrop-blur-md px-4 py-2.5 rounded-full border border-stone-700/60 max-w-2xl mx-auto w-full shadow-2xl"
+            className="flex items-center justify-between text-white z-20 bg-stone-900/90 backdrop-blur-md px-4 py-2.5 rounded-full border border-stone-700/60 max-w-3xl mx-auto w-full shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2">
@@ -167,6 +186,11 @@ export default function ItemModal({ item, onClose, onInquire }) {
               <span className="text-xs text-stone-200 font-medium truncate max-w-[140px] sm:max-w-xs">
                 {item.title}
               </span>
+              {photoList.length > 1 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-stone-300 font-mono">
+                  Foto {selectedPhotoIndex + 1}/{photoList.length}
+                </span>
+              )}
             </div>
 
             {/* Controlli Zoom & Reset */}
@@ -247,7 +271,7 @@ export default function ItemModal({ item, onClose, onInquire }) {
             }}
           >
             <div
-              className="relative max-h-[82vh] max-w-[92vw] will-change-transform"
+              className="relative max-h-[78vh] max-w-[92vw] will-change-transform"
               style={{
                 transform: `translate(${translateX}%, ${translateY}%) scale(${zoomLevel})`,
                 transformOrigin: 'center center',
@@ -255,18 +279,18 @@ export default function ItemModal({ item, onClose, onInquire }) {
               }}
             >
               <img
-                src={item.imageUrl}
-                alt={item.title}
+                src={currentPhotoUrl}
+                alt={`${item.title} - foto ingrandita`}
                 draggable={false}
-                className="max-h-[82vh] max-w-[92vw] object-contain rounded-xl shadow-2xl pointer-events-none"
+                className="max-h-[78vh] max-w-[92vw] object-contain rounded-xl shadow-2xl pointer-events-none"
               />
             </div>
           </div>
 
-          {/* 📍 LA MINIMAPPA NAVIGATORE (Mostra esattamente dove ti trovi nell'opera) */}
+          {/* 📍 LA MINIMAPPA NAVIGATORE */}
           {showMinimap && (
             <div
-              className="absolute bottom-6 right-6 z-30 bg-stone-900/90 backdrop-blur-md p-2.5 rounded-2xl border border-stone-700/80 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200"
+              className="absolute bottom-16 right-6 z-30 bg-stone-900/90 backdrop-blur-md p-2.5 rounded-2xl border border-stone-700/80 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-1.5 px-1">
@@ -277,7 +301,7 @@ export default function ItemModal({ item, onClose, onInquire }) {
                 <span className="text-[10px] text-stone-400">Clicca per spostarti</span>
               </div>
 
-              {/* Thumbnail Container: aderisce esattamente alle proporzioni dell'opera */}
+              {/* Thumbnail Container */}
               <div
                 ref={minimapRef}
                 style={{ touchAction: 'none' }}
@@ -293,13 +317,13 @@ export default function ItemModal({ item, onClose, onInquire }) {
                 className="relative w-fit h-fit max-w-[180px] max-h-[140px] rounded-xl overflow-hidden border border-stone-600 bg-stone-950 cursor-crosshair group shadow-inner mx-auto"
               >
                 <img
-                  src={item.imageUrl}
+                  src={currentPhotoUrl}
                   alt="Mappa miniatura"
                   draggable={false}
                   className="max-w-[180px] max-h-[140px] w-auto h-auto object-contain block opacity-85 group-hover:opacity-100 transition-opacity pointer-events-none select-none"
                 />
 
-                {/* Rettangolo Mirino (Viewfinder Box): Mostra esattamente la sezione visibile */}
+                {/* Rettangolo Mirino */}
                 <div
                   className="absolute border-2 border-amber-400 bg-amber-400/30 shadow-xs pointer-events-none"
                   style={{
@@ -316,15 +340,44 @@ export default function ItemModal({ item, onClose, onInquire }) {
             </div>
           )}
 
+          {/* Galleria Foto Rapida in Basso durante lo Zoom */}
+          {photoList.length > 1 && (
+            <div className="z-20 max-w-xl mx-auto flex items-center gap-2 bg-stone-900/80 backdrop-blur-md px-3 py-2 rounded-2xl border border-stone-800">
+              <span className="text-[11px] text-stone-400 font-medium px-1 flex items-center gap-1">
+                <Images className="w-3.5 h-3.5" />
+                <span>Foto:</span>
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto">
+                {photoList.map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPhotoIndex(idx);
+                      setPosition({ u: 0.5, v: 0.5 });
+                    }}
+                    className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
+                      selectedPhotoIndex === idx
+                        ? 'border-amber-400 ring-2 ring-amber-400/40 scale-105'
+                        : 'border-stone-700 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={url} alt={`Anteprima ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Bottom Bar Hint */}
-          <div className="text-center text-xs text-stone-400 z-10 flex items-center justify-center gap-2">
+          <div className="text-center text-xs text-stone-400 z-10 flex items-center justify-center gap-2 mt-2">
             <Move className="w-3.5 h-3.5 text-stone-500" />
-            <span>Trascina con il mouse o con il dito per esplorare • Clicca sulla mappa in basso a destra per saltare da un punto all'altro</span>
+            <span>Trascina per esplorare i dettagli • Clicca sulla mappa in basso a destra per orientarti</span>
           </div>
         </div>
       )}
 
-      {/* 2. MODALE PRINCIPALE DETTAGLI LAVORO */}
+      {/* 2. MODALE PRINCIPALE DETTAGLI LAVORO CON CAROSELLO ANTEPRIME */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-950/75 backdrop-blur-sm animate-in fade-in duration-200">
         <div
           className="relative w-full max-w-5xl bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col md:flex-row max-h-[92vh] animate-in zoom-in-95 duration-200"
@@ -339,40 +392,111 @@ export default function ItemModal({ item, onClose, onInquire }) {
             <X className="w-5 h-5" />
           </button>
 
-          {/* Left: Big Photo Container con pulsante Zoom massimo */}
-          <div className="md:w-7/12 bg-stone-100 relative min-h-[350px] md:min-h-[520px] flex items-center justify-center overflow-hidden group">
-            <img
-              src={item.imageUrl}
-              alt={item.title}
-              className="w-full h-full object-cover max-h-[48vh] md:max-h-[92vh] group-hover:scale-102 transition-transform duration-500"
-            />
+          {/* Left: Main Photo + Thumbnails Strip */}
+          <div className="md:w-7/12 bg-stone-100 flex flex-col justify-between overflow-hidden border-b md:border-b-0 md:border-r border-stone-200">
             
-            <div className="absolute top-4 left-4">
-              <span
-                className={`text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-md shadow-xs ${
-                  item.category === 'Uncinetto'
-                    ? 'bg-amber-100/95 text-amber-900 border border-amber-300'
-                    : 'bg-rose-100/95 text-rose-900 border border-rose-300'
-                }`}
+            {/* Foto Principale Attiva */}
+            <div className="relative flex-1 min-h-[340px] md:min-h-[440px] flex items-center justify-center overflow-hidden group bg-stone-100">
+              <img
+                src={currentPhotoUrl}
+                alt={item.title}
+                className="w-full h-full object-cover max-h-[46vh] md:max-h-[68vh] group-hover:scale-102 transition-transform duration-500"
+              />
+              
+              {/* Badge Categoria */}
+              <div className="absolute top-4 left-4 z-10">
+                <span
+                  className={`text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-md shadow-xs ${
+                    item.category === 'Uncinetto'
+                      ? 'bg-amber-100/95 text-amber-900 border border-amber-300'
+                      : 'bg-rose-100/95 text-rose-900 border border-rose-300'
+                  }`}
+                >
+                  {item.category === 'Uncinetto' ? '🧶 Uncinetto' : '🪡 Ricamo'}
+                </span>
+              </div>
+
+              {/* Frecce Sinistra/Destra per scorrere rapidamente le foto */}
+              {photoList.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((prev) => (prev - 1 + photoList.length) % photoList.length);
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-stone-900/60 hover:bg-stone-900 text-white flex items-center justify-center backdrop-blur-xs transition-all opacity-80 hover:opacity-100 cursor-pointer shadow-md"
+                    title="Foto precedente"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((prev) => (prev + 1) % photoList.length);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-stone-900/60 hover:bg-stone-900 text-white flex items-center justify-center backdrop-blur-xs transition-all opacity-80 hover:opacity-100 cursor-pointer shadow-md"
+                    title="Foto successiva"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              {/* Pulsante Ingrandisci Trame a Schermo Intero con Minimappa */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsZoomedFull(true);
+                  setZoomLevel(2.2);
+                  setPosition({ u: 0.5, v: 0.5 });
+                }}
+                className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 bg-stone-900/90 hover:bg-stone-900 text-white rounded-full text-xs font-semibold backdrop-blur-md shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer"
+                title="Ingrandisci questa foto a schermo intero con zoom e mappa"
               >
-                {item.category === 'Uncinetto' ? '🧶 Uncinetto' : '🪡 Ricamo'}
-              </span>
+                <Maximize2 className="w-4 h-4 text-rose-300" />
+                <span>Ingrandisci Questa Foto</span>
+              </button>
             </div>
 
-            {/* Pulsante Ingrandisci Trame a Schermo Intero con Minimappa */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsZoomedFull(true);
-                setZoomLevel(2.2);
-                setPosition({ u: 0.5, v: 0.5 });
-              }}
-              className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 bg-stone-900/90 hover:bg-stone-900 text-white rounded-full text-xs font-semibold backdrop-blur-md shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer"
-              title="Apri a schermo intero con zoom massimo e mappa di navigazione"
-            >
-              <Maximize2 className="w-4 h-4 text-rose-300" />
-              <span>Ingrandisci Dettagli Trame</span>
-            </button>
+            {/* STRISCIA ANTEPRIME FOTO (Thumbnails) */}
+            {photoList.length > 1 ? (
+              <div className="p-3 bg-stone-50 border-t border-stone-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold text-stone-600 uppercase tracking-wider flex items-center gap-1.5">
+                    <Images className="w-3.5 h-3.5 text-rose-800" />
+                    <span>Visuali Disponibili ({photoList.length} foto)</span>
+                  </span>
+                  <span className="text-[10px] text-stone-500">
+                    Clicca un'anteprima per visualizzarla o ingrandirla
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+                  {photoList.map((url, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedPhotoIndex(idx)}
+                      className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
+                        selectedPhotoIndex === idx
+                          ? 'border-rose-900 ring-2 ring-rose-900/30 scale-102 shadow-sm'
+                          : 'border-stone-300 hover:border-stone-400 opacity-70 hover:opacity-100'
+                      }`}
+                      title={`Visualizza foto ${idx + 1}`}
+                    >
+                      <img src={url} alt={`Anteprima ${idx + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-1 right-1 bg-stone-900/80 text-white text-[9px] font-semibold px-1 rounded">
+                        #{idx + 1}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
           </div>
 
           {/* Right: Details & Contact Action */}

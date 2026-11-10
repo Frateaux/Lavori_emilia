@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import Gallery from './components/Gallery';
 import StorySection from './components/StorySection';
+import Gallery from './components/Gallery';
+import CraftsmanshipSection from './components/CraftsmanshipSection';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 import ItemModal from './components/ItemModal';
@@ -23,7 +24,7 @@ export default function App() {
   const [inquiryItem, setInquiryItem] = useState(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // Caricamento creazioni
+  // Caricamento creazioni da Supabase
   useEffect(() => {
     async function loadData() {
       try {
@@ -53,13 +54,15 @@ export default function App() {
     setCreations((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Gestione modifica creazione esistente
+  // Gestione modifica creazione esistente (titolo, descrizione, ecc.)
   const handleUpdateCreation = async (id, updatedFields) => {
     const res = await updateCreation(id, updatedFields);
     if (res.success && res.item) {
       setCreations((prev) =>
         prev.map((item) => (item.id === id ? res.item : item))
       );
+      // Aggiorna anche l'anteprima aperta se coincide
+      setSelectedItem((prev) => (prev && prev.id === id ? res.item : prev));
     }
     return res;
   };
@@ -82,7 +85,7 @@ export default function App() {
     }
   };
 
-  // L'ultimo lavoro contrassegnato come "in evidenza" (featured), oppure il primo lavoro disponibile
+  // L'ultimo lavoro contrassegnato come "in evidenza", oppure il primo disponibile
   const featuredCreations = creations.filter((c) => c.featured);
   const latestFeatured =
     featuredCreations.length > 0 ? featuredCreations[0] : (creations[0] || null);
@@ -122,7 +125,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-800">
+    <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-800 selection:bg-rose-100 selection:text-rose-950">
       
       {/* Top Navbar */}
       <Navbar onOpenAdmin={() => setIsAdminOpen(true)} />
@@ -130,7 +133,7 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1">
         
-        {/* 1. Hero Section (Mostra dinamicamente l'ultima foto messa in evidenza) */}
+        {/* 1. Hero Section con Scena Three.js 3D interattiva */}
         <Hero
           featuredItem={latestFeatured}
           secondaryItem={secondaryFeatured}
@@ -145,10 +148,10 @@ export default function App() {
           }}
         />
 
-        {/* 2. Story & Biography Section (All'inizio: introduce Emilia e la sua passione) */}
+        {/* 2. Biografia & Filosofia di Emilia */}
         <StorySection />
 
-        {/* 3. Catalog & Gallery Section (Il portfolio delle opere) */}
+        {/* 3. Showcase / Galleria Opere con filtri e micro-interazioni */}
         <Gallery
           creations={creations}
           onSelectItem={(item) => setSelectedItem(item)}
@@ -156,22 +159,25 @@ export default function App() {
           onOpenAdmin={() => setIsAdminOpen(true)}
         />
 
-        {/* 4. Contact Section for Emilia */}
+        {/* 4. Sezione Artigianalità, Filati e Retro Perfetto */}
+        <CraftsmanshipSection />
+
+        {/* 5. Contatti Diretti WhatsApp & Email per Emilia */}
         <ContactSection selectedInquiryItem={inquiryItem} />
 
       </main>
 
-      {/* Prominent Footer with Developer Credits (Beniamino Boiano) */}
+      {/* Prominent Footer con crediti Beniamino Boiano */}
       <Footer />
 
-      {/* Modal Dettagli Lavoro (Lightbox con Ultra-Zoom Trame) */}
+      {/* Modal Dettagli Lavoro (Ultra-Zoom con Radar/Minimappa) */}
       <ItemModal
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
         onInquire={(item, channel) => handleInquire(item, channel)}
       />
 
-      {/* Modal Amministrazione Spazio Emilia (Upload Fotocamera / Modifica Didascalie) */}
+      {/* Modal Amministrazione Spazio Emilia */}
       <AdminModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}

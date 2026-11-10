@@ -1,4 +1,4 @@
-// Creazioni iniziali d'esempio per il catalogo di Emilia
+// Creazioni iniziali d'esempio per il catalogo di Emilia con supporto multi-foto
 export const initialCreations = [
   {
     id: 'creazione-1',
@@ -7,7 +7,14 @@ export const initialCreations = [
     description: 'Raffinato centrino rotondo realizzato a mano con filo di Scozia titolo 16 colore ecrù. Ideale come sottovaso di pregio o centrotavola per ambienti rustici o classici.',
     materials: '100% Cotone filo di Scozia n.16',
     dimensions: 'Diametro: 38 cm',
-    imageUrl: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=1000&auto=format&fit=crop',
+    imageUrl: JSON.stringify({
+      main: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=1000&auto=format&fit=crop',
+      gallery: [
+        'https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1607344645866-009c320c5ab8?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1590736969955-71cc94801759?q=80&w=1000&auto=format&fit=crop',
+      ],
+    }),
     featured: true,
     createdAt: '2026-09-15T10:00:00Z',
   },
@@ -18,7 +25,13 @@ export const initialCreations = [
     description: 'Set di tovagliette da colazione in puro lino grezzo naturale con ricamo botanico eseguito a mano: margherite, lavanda e foglie di salvia con sfumature delicate.',
     materials: 'Puro lino italiano, filati DMC Mouliné',
     dimensions: '45 x 35 cm',
-    imageUrl: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=1000&auto=format&fit=crop',
+    imageUrl: JSON.stringify({
+      main: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=1000&auto=format&fit=crop',
+      gallery: [
+        'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=1000&auto=format&fit=crop',
+      ],
+    }),
     featured: true,
     createdAt: '2026-09-18T14:30:00Z',
   },

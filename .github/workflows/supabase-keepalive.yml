@@ -1,0 +1,53 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Esegue ogni lunedì e giovedì alle 06:00 UTC (ogni 3-4 giorni)
+    # per prevenire la sospensione automatica per inattività di 7 giorni di Supabase Free
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch: # Permette l'avvio manuale dalla scheda 'Actions' di GitHub
+
+jobs:
+  ping-supabase:
+    name: Ping Supabase Database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Esegui query keep-alive al database
+        run: |
+          SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}"
+          SUPABASE_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+
+          if [ -z "$SUPABASE_URL" ]; then
+            SUPABASE_URL="https://xtfywqmlakryfvuroxol.supabase.co"
+          fi
+
+          if [ -z "$SUPABASE_KEY" ]; then
+            SUPABASE_KEY="sb_publishable_v7qW_RvIfsC3YzeD7ttEvA_STnDrbic"
+          fi
+
+          # Rimuovi eventuale slash finale dall'URL
+          SUPABASE_URL="${SUPABASE_URL%/}"
+
+          ENDPOINT="${SUPABASE_URL}/rest/v1/creazioni?select=id&limit=1"
+          echo "Invio richiesta keep-alive a: ${ENDPOINT}"
+
+          HTTP_RESPONSE=$(curl -s -S -w "\n%{http_code}" --max-time 15 -X GET "$ENDPOINT" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" || echo -e "\n000")
+
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+
+          echo "HTTP Status Code: ${HTTP_STATUS}"
+          echo "Response: ${HTTP_BODY}"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Ping riuscito con successo! Database attivo e timer di inattivita resettato."
+            exit 0
+          elif [ "$HTTP_STATUS" = "000" ]; then
+            echo "⚠️ Impossibile raggiungere l'host (status 000). Se il database e attualmente in pausa nel piano Free di Supabase, accedi alla dashboard di Supabase (https://supabase.com/dashboard) e clicca su 'Restore project'. Una volta ripristinato, questo workflow lo manterra attivo automaticamente."
+            exit 0
+          else
+            echo "ℹ️ Risposta ricevuta con codice ${HTTP_STATUS}. L'interazione con l'infrastruttura Supabase e comunque avvenuta."
+            exit 0
+          fi

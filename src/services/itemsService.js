@@ -72,41 +72,65 @@ export async function createCreation({
   featured = false,
   imageFile,
   imageDataUrl,
+  imageFiles = [],
+  imageDataUrls = [],
 }) {
   const supabase = getSupabaseClient();
   const id = 'cr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
   const createdAt = new Date().toISOString();
 
-  let finalImageUrl = imageDataUrl;
+  // Raccogli tutti i file e i dataUrl forniti (sia singoli che multipli)
+  const allFiles = imageFiles && imageFiles.length > 0 ? imageFiles : (imageFile ? [imageFile] : []);
+  const allDataUrls = imageDataUrls && imageDataUrls.length > 0 ? imageDataUrls : (imageDataUrl ? [imageDataUrl] : []);
 
-  // Se Supabase è attivo ed è stato fornito un file, carichiamo su Supabase Storage
-  if (supabase && imageFile) {
-    try {
-      const fileExt = imageFile.name.split('.').pop() || 'jpg';
-      const fileName = `${id}.${fileExt}`;
-      const filePath = fileName;
+  const finalUploadedUrls = [];
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('creazioni')
-        .upload(filePath, imageFile, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+  // Se Supabase è attivo ed è stato fornito almeno un file, carica su Supabase Storage
+  if (supabase && allFiles.length > 0) {
+    for (let i = 0; i < allFiles.length; i++) {
+      const f = allFiles[i];
+      try {
+        const fileExt = f.name.split('.').pop() || 'jpg';
+        const fileName = `${id}_${i}.${fileExt}`;
+        const filePath = fileName;
 
-      if (!uploadError) {
-        const { data: publicUrlData } = supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('creazioni')
-          .getPublicUrl(filePath);
+          .upload(filePath, f, {
+            cacheControl: '3600',
+            upsert: true,
+          });
 
-        if (publicUrlData?.publicUrl) {
-          finalImageUrl = publicUrlData.publicUrl;
+        if (!uploadError) {
+          const { data: publicUrlData } = supabase.storage
+            .from('creazioni')
+            .getPublicUrl(filePath);
+
+          if (publicUrlData?.publicUrl) {
+            finalUploadedUrls.push(publicUrlData.publicUrl);
+          } else {
+            finalUploadedUrls.push(allDataUrls[i] || '');
+          }
+        } else {
+          console.warn(`Upload storage foto ${i} fallito:`, uploadError);
+          finalUploadedUrls.push(allDataUrls[i] || '');
         }
-      } else {
-        console.warn('Upload storage fallito, salvo dataUrl come fallback:', uploadError);
+      } catch (storageErr) {
+        console.warn(`Errore storage foto ${i}:`, storageErr);
+        finalUploadedUrls.push(allDataUrls[i] || '');
       }
-    } catch (storageErr) {
-      console.warn('Errore storage:', storageErr);
     }
+  } else {
+    finalUploadedUrls.push(...allDataUrls);
+  }
+
+  // Prepara il campo imageUrl: se singola foto salva stringa diretta, se multiple salva JSON codificato
+  let finalImageUrl = finalUploadedUrls[0] || '';
+  if (finalUploadedUrls.length > 1) {
+    finalImageUrl = JSON.stringify({
+      main: finalUploadedUrls[0],
+      gallery: finalUploadedUrls,
+    });
   }
 
   const newItem = {
@@ -167,41 +191,60 @@ export async function deleteCreation(id) {
  * Modifica i dati di una creazione esistente (titolo, categoria, descrizione, materiali, misure)
  */
 export async function updateCreation(id, updatedFields) {
-  const current = getLocalItems();
-  let updatedItem = null;
-  const updated = current.map((item) => {
-    if (item.id === id) {
-      updatedItem = { ...item, ...updatedFields };
-      return updatedItem;
-    }
-    return item;
-  });
-  saveLocalItems(updated);
-
   const supabase = getSupabaseClient();
-  if (supabase && updatedItem) {
+  let updatedItem = null;
+
+  // 1. Se Supabase è collegato, aggiorna direttamente nel database cloud
+  if (supabase) {
     try {
+      const payload = {
+        title: updatedFields.title,
+        category: updatedFields.category,
+        description: updatedFields.description,
+        materials: updatedFields.materials,
+        dimensions: updatedFields.dimensions,
+        featured: Boolean(updatedFields.featured),
+        ...(updatedFields.imageUrl ? { imageUrl: updatedFields.imageUrl } : {}),
+      };
+
       const { data, error } = await supabase
         .from('creazioni')
-        .update({
-          title: updatedItem.title,
-          category: updatedItem.category,
-          description: updatedItem.description,
-          materials: updatedItem.materials,
-          dimensions: updatedItem.dimensions,
-          featured: updatedItem.featured,
-          ...(updatedFields.imageUrl ? { imageUrl: updatedItem.imageUrl } : {}),
-        })
+        .update(payload)
         .eq('id', id)
         .select();
 
       if (!error && data && data.length > 0) {
-        return { success: true, item: data[0] };
+        updatedItem = data[0];
+      } else if (error) {
+        console.warn('Errore aggiornamento Supabase:', error);
       }
     } catch (e) {
-      console.warn('Errore aggiornamento Supabase:', e);
+      console.warn('Eccezione aggiornamento Supabase:', e);
     }
   }
+
+  // 2. Aggiorna sempre la cache locale (localStorage)
+  const current = getLocalItems();
+  const existsInLocal = current.some((item) => item.id === id);
+
+  let updatedList;
+  if (existsInLocal) {
+    updatedList = current.map((item) => {
+      if (item.id === id) {
+        const merged = updatedItem || { ...item, ...updatedFields };
+        if (!updatedItem) updatedItem = merged;
+        return merged;
+      }
+      return item;
+    });
+  } else if (updatedItem) {
+    updatedList = [updatedItem, ...current];
+  } else {
+    updatedItem = { id, ...updatedFields };
+    updatedList = [updatedItem, ...current];
+  }
+
+  saveLocalItems(updatedList);
 
   return { success: true, item: updatedItem };
 }

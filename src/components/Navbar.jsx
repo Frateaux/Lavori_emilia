@@ -17,56 +17,63 @@ export default function Navbar({ onOpenAdmin }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* Logo & Brand */}
-          <a href="#" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center text-rose-800 shadow-inner group-hover:scale-105 transition-transform duration-300">
-              <Sparkles className="w-5 h-5 text-rose-700 animate-pulse" />
+          {/* Logo & Brand Identity: "Emilia — L'Arte del Filo" */}
+          <a href="#" className="flex items-center gap-3.5 group">
+            <div className="w-11 h-11 rounded-full bg-rose-100/80 border border-rose-200/70 flex items-center justify-center text-rose-800 shadow-inner group-hover:scale-105 transition-transform duration-300">
+              <Sparkles className="w-5 h-5 text-rose-800 animate-pulse" />
             </div>
             <div>
-              <span className="font-serif text-2xl font-bold tracking-tight text-stone-900 block leading-tight">
+              <span className="font-serif text-2xl font-normal tracking-tight text-stone-900 block leading-tight">
                 Emilia
               </span>
-              <span className="text-xs uppercase tracking-widest text-stone-500 font-medium">
-                Ricamo & Uncinetto
+              <span className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold block">
+                L'Arte del Filo & Ricamo
               </span>
             </div>
           </a>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-stone-600">
+          <nav className="hidden lg:flex items-center gap-7 text-sm font-medium text-stone-600">
             <button
               onClick={() => scrollTo('storia')}
-              className="hover:text-rose-800 transition-colors py-1 cursor-pointer"
+              className="hover:text-rose-900 transition-colors py-1 cursor-pointer"
             >
-              La Mia Storia
+              Biografia & Passione
             </button>
             <button
               onClick={() => scrollTo('catalogo')}
-              className="hover:text-rose-800 transition-colors py-1 cursor-pointer"
+              className="hover:text-rose-900 transition-colors py-1 cursor-pointer"
             >
-              Catalogo Lavori
+              Le Creazioni
+            </button>
+            <button
+              onClick={() => scrollTo('materiali')}
+              className="hover:text-rose-900 transition-colors py-1 cursor-pointer"
+            >
+              Materiali & Tecnica
             </button>
             <button
               onClick={() => scrollTo('contatti')}
-              className="hover:text-rose-800 transition-colors py-1 cursor-pointer"
+              className="hover:text-rose-900 transition-colors py-1 cursor-pointer"
             >
-              Contatti
+              Contatti & Richieste
             </button>
           </nav>
 
-          {/* Right Action: Admin Access */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* Right Action: Admin Access & Contact CTA */}
+          <div className="hidden sm:flex items-center gap-3.5">
             <button
               onClick={onOpenAdmin}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-rose-50 hover:text-rose-800 rounded-full border border-stone-200/80 transition-all duration-200 shadow-xs cursor-pointer"
-              title="Area riservata ad Emilia per caricare nuove foto"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-stone-700 bg-white hover:bg-rose-50 hover:text-rose-900 rounded-full border border-stone-200/90 transition-all duration-200 shadow-2xs cursor-pointer"
+              title="Area riservata ad Emilia per caricare nuove foto o modificare didascalie"
             >
-              <Lock className="w-3.5 h-3.5 text-stone-500" />
+              <Lock className="w-3.5 h-3.5 text-stone-400" />
               <span>Spazio Emilia</span>
             </button>
+            
             <button
               onClick={() => scrollTo('contatti')}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-full transition-all duration-200 shadow-sm cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-full transition-all duration-200 shadow-xs cursor-pointer"
             >
               <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
               <span>Richiedi Creazione</span>
@@ -74,10 +81,10 @@ export default function Navbar({ onOpenAdmin }) {
           </div>
 
           {/* Mobile hamburger button */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex lg:hidden items-center gap-2">
             <button
               onClick={onOpenAdmin}
-              className="p-2 text-stone-600 hover:text-rose-800 bg-stone-100 rounded-full cursor-pointer"
+              className="p-2 text-stone-600 hover:text-rose-800 bg-white border border-stone-200/80 rounded-full cursor-pointer shadow-2xs sm:hidden"
               title="Spazio Emilia"
             >
               <Lock className="w-4 h-4" />
@@ -96,24 +103,30 @@ export default function Navbar({ onOpenAdmin }) {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-stone-200 bg-[#FAF8F5] px-4 pt-2 pb-6 space-y-3 animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="lg:hidden border-b border-stone-200 bg-[#FAF8F5] px-4 pt-3 pb-6 space-y-2.5 animate-in fade-in slide-in-from-top-4 duration-200">
           <button
             onClick={() => scrollTo('storia')}
-            className="block w-full text-left py-2.5 px-3 rounded-lg text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
+            className="block w-full text-left py-2.5 px-3 rounded-xl text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
           >
-            La Mia Storia
+            Biografia & Passione
           </button>
           <button
             onClick={() => scrollTo('catalogo')}
-            className="block w-full text-left py-2.5 px-3 rounded-lg text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
+            className="block w-full text-left py-2.5 px-3 rounded-xl text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
           >
-            Catalogo Lavori
+            Le Creazioni
+          </button>
+          <button
+            onClick={() => scrollTo('materiali')}
+            className="block w-full text-left py-2.5 px-3 rounded-xl text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
+          >
+            Materiali & Tecnica
           </button>
           <button
             onClick={() => scrollTo('contatti')}
-            className="block w-full text-left py-2.5 px-3 rounded-lg text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
+            className="block w-full text-left py-2.5 px-3 rounded-xl text-stone-800 font-medium hover:bg-stone-100 cursor-pointer"
           >
-            Contatti
+            Contatti & Richieste
           </button>
           <div className="pt-2 flex flex-col gap-2">
             <button
@@ -121,10 +134,10 @@ export default function Navbar({ onOpenAdmin }) {
                 setMobileMenuOpen(false);
                 onOpenAdmin();
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-semibold text-stone-800 bg-stone-100 rounded-full border border-stone-300 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold text-stone-800 bg-white rounded-full border border-stone-300 cursor-pointer shadow-2xs"
             >
-              <Lock className="w-4 h-4 text-stone-500" />
-              <span>Spazio Emilia (Gestione Lavori)</span>
+              <Lock className="w-4 h-4 text-stone-400" />
+              <span>Spazio Emilia (Gestione & Caricamento)</span>
             </button>
           </div>
         </div>
